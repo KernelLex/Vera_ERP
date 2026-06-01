@@ -6,56 +6,50 @@ Custom HR & Business Management System built on ERPNext/Frappe for Vera Enterpri
 
 ## FOR CLAUDE CODE — READ THIS FIRST
 
-Before doing any setup, deployment, or credential work, ask the user for the following. These are **never stored in this repo** — you must collect them each session.
+Before doing any setup or deployment work, ask the user for these. They are **never in this repo**.
 
-### Credentials to ask for before proceeding
+### Ask the user before running setup
 
 ```
 1. MariaDB root password
    → Used in: bench new-site --mariadb-root-password <THIS>
-   → Ask: "What is the MariaDB root password for this server?"
 
-2. Jibble Client ID
+2. Jibble Client ID + Jibble Client Secret
    → Used in: bench --site <site> set-config jibble_client_id "<THIS>"
-   → Ask: "What is the Jibble API client_id?"
+              bench --site <site> set-config jibble_client_secret "<THIS>"
 
-3. Jibble Client Secret
-   → Used in: bench --site <site> set-config jibble_client_secret "<THIS>"
-   → Ask: "What is the Jibble API client_secret?"
+3. Google Drive service_account.json (full file contents — from their secure vault)
+   → Save to: apps/vera_drive/vera_drive/service_account.json  (gitignored)
+   → Known public fields:
+       project_id:     vera-drive-498117
+       client_email:   vera-drive-bot@vera-drive-498117.iam.gserviceaccount.com
+       client_id:      104066696251131720998
+       private_key_id: 45b378f1c66c523bb0077dc362f3db1b247086d3
+   → The private_key field is the secret — ask the user to paste the full JSON
 
-4. Google Drive service_account.json (full file contents)
-   → Saved to: apps/vera_drive/vera_drive/service_account.json  (gitignored)
-   → Known non-secret fields already on file:
-       project_id:       vera-drive-498117
-       client_email:     vera-drive-bot@vera-drive-498117.iam.gserviceaccount.com
-       client_id:        104066696251131720998
-       private_key_id:   45b378f1c66c523bb0077dc362f3db1b247086d3
-   → Ask: "Please paste the full service_account.json contents (from your secure vault)."
-
-5. Site domain / hostname
-   → Default for production: hrms.yourdomain.com
-   → Default for local dev:  hrms.localhost
-   → Ask: "What should the ERPNext site name be?"
+4. Production domain / site name
+   → Local dev default: hrms.localhost
+   → Production: whatever domain points to the server (e.g. hrms.yourdomain.com)
 ```
 
-### What is already set up (no need to ask)
+### Already known — do NOT ask
 
-- ERPNext site name for **local dev**: `hrms.localhost`
-- ERPNext admin password: `Vera@2026` (all user accounts use this)
+- All user passwords: `Vera@2026`
+- Admin login: `owais@veraenterprises.in` (maps to ERPNext `Administrator`)
 - Google Drive root folder ID: `1tuZUNAScIAR7IX3sttH6VgKkQNsy5IDu`
-- Bench port on local WSL2 dev machine: **8001** (not 8000 — Hyper-V reserves 8000)
-- Frontend dev port: **5173** (Vite), proxies `/api/` to `http://localhost:8001`
+- Local dev bench port: **8001** (WSL2 — Hyper-V reserves 8000); production servers use **8000**
+- Frontend dev port: **5173** (Vite), proxies `/api/` to ERPNext
 
-### Key files to read for full project context
+### Key files to read for project context
 
 | File | What it contains |
 |------|-----------------|
-| `apps/hr_client/CLAUDE.md` | Full project context, API contract, decisions, guardrails — read this for any backend work |
-| `apps/hr_client/hr_client/api/` | All Frappe backend endpoint files |
-| `apps/vera_drive/vera_drive/api.py` | Google Drive API endpoints |
+| `apps/hr_client/CLAUDE.md` | Full project context, API contract, all decisions — read before any backend work |
+| `apps/hr_client/hr_client/api/` | All Frappe backend API endpoints |
+| `apps/hr_client/hr_client/patches/` | Data seed scripts (users, employees, company, holidays) |
+| `apps/vera_drive/vera_drive/api.py` | Google Drive endpoints |
 | `hr-frontend/src/pages/` | All React page components |
-| `hr-frontend/src/api/` | Frontend API wrappers |
-| `hr-frontend/vite.config.ts` | Proxy config (API base URL) |
+| `hr-frontend/vite.config.ts` | API proxy config |
 
 ---
 
@@ -77,9 +71,10 @@ Before doing any setup, deployment, or credential work, ask the user for the fol
 Vera_ERP/
 ├── apps/
 │   ├── hr_client/        # Frappe backend — HR, Recruitment, Leave, CRM, Expenses
+│   │   └── hr_client/patches/   # Data seed scripts — run via setup.sh
 │   └── vera_drive/       # Google Drive mirror & document management
 ├── hr-frontend/          # React SPA (all user-facing UI)
-├── setup.sh              # One-command setup for fresh server
+├── setup.sh              # One-command setup (run from inside frappe-bench/)
 └── README.md             # This file
 ```
 
@@ -87,75 +82,119 @@ Vera_ERP/
 
 ## Fresh Server Setup
 
+Run these steps in order on a clean Ubuntu 22.04 server. Each section tells you which credentials to ask for.
+
 ### 1. Server Requirements
 
 - Ubuntu 22.04 LTS
 - Minimum 4 GB RAM, 2 vCPU, 40 GB SSD
 - Open ports: 22, 80, 443
+- Run as a **non-root user** with sudo access (e.g. create user `frappe`)
 
-### 2. Install Frappe Bench
+```bash
+# Create a non-root user if needed
+sudo adduser frappe
+sudo usermod -aG sudo frappe
+su - frappe
+```
+
+### 2. Install System Dependencies
 
 ```bash
 sudo apt update && sudo apt upgrade -y
+
+# Core packages — includes wkhtmltopdf for PDF generation
 sudo apt install -y python3-dev python3-pip python3-venv \
-  redis-server mariadb-server nginx nodejs npm git curl
+  redis-server mariadb-server nginx git curl \
+  wkhtmltopdf xvfb libfontconfig
 
+# Node.js 18 (required — apt default is too old)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Verify Node version is 18+
+node --version
+
+# Install bench CLI
 pip3 install frappe-bench
+```
 
+### 3. Configure MariaDB
+
+```bash
+sudo mysql_secure_installation
+# Set a root password when prompted — you will need it in the next step
+
+sudo mysql -u root -p -e "
+  CREATE USER 'frappe'@'localhost' IDENTIFIED BY 'frappe';
+  GRANT ALL PRIVILEGES ON \`_test_%\`.* TO 'frappe'@'localhost';
+  FLUSH PRIVILEGES;
+"
+```
+
+### 4. Initialise Frappe Bench
+
+```bash
 bench init --frappe-branch version-15 frappe-bench
 cd frappe-bench
 
-# Ask user for: SITE_NAME, DB_PASSWORD
+# Ask user for: SITE_NAME (e.g. hrms.yourdomain.com), MARIADB_ROOT_PASSWORD
 bench new-site <SITE_NAME> \
-  --mariadb-root-password <DB_PASSWORD> \
+  --mariadb-root-password <MARIADB_ROOT_PASSWORD> \
   --admin-password Vera@2026
 
+# Install ERPNext
 bench get-app --branch version-15 erpnext
 bench --site <SITE_NAME> install-app erpnext
 
+# Install HRMS
 bench get-app --branch version-15 hrms
 bench --site <SITE_NAME> install-app hrms
 ```
 
-### 3. Clone Vera ERP and Install Custom Apps
+### 5. Clone Vera ERP and Run Setup
 
 ```bash
 cd ~/frappe-bench/apps
 git clone https://github.com/KernelLex/Vera_ERP.git
 
-cp -r Vera_ERP/apps/hr_client ~/frappe-bench/apps/
-bench --site <SITE_NAME> install-app hr_client
-
-cp -r Vera_ERP/apps/vera_drive ~/frappe-bench/apps/
-bench --site <SITE_NAME> install-app vera_drive
-
-bench --site <SITE_NAME> migrate
-bench --site <SITE_NAME> clear-cache
+cd ~/frappe-bench
+# This script installs both apps, seeds all data, and runs npm install
+bash apps/Vera_ERP/setup.sh <SITE_NAME>
 ```
 
-### 4. Add Credentials (never commit these — always ask the user)
+`setup.sh` does the following automatically:
+- Copies `hr_client` and `vera_drive` into bench
+- Installs vera_drive Python dependencies (`google-api-python-client`, `pdfplumber`, etc.)
+- Installs both apps into the site
+- Runs `bench migrate`
+- Seeds: company rename → designations → all 5 user accounts → employees → holidays
+- Runs `npm install` in `hr-frontend/`
+
+### 6. Add Credentials (ask user — never stored in repo)
 
 #### Jibble API
 ```bash
-# Ask user for JIBBLE_CLIENT_ID and JIBBLE_CLIENT_SECRET before running
+# Ask user for JIBBLE_CLIENT_ID and JIBBLE_CLIENT_SECRET
 bench --site <SITE_NAME> set-config jibble_client_id "<JIBBLE_CLIENT_ID>"
 bench --site <SITE_NAME> set-config jibble_client_secret "<JIBBLE_CLIENT_SECRET>"
 ```
 
 #### Google Drive Service Account
 ```bash
-# Ask user to paste the full service_account.json contents, then save to:
-# apps/vera_drive/vera_drive/service_account.json
-# This file is gitignored — never commit it
+# Ask user to paste the full service_account.json
+# Then write it to:
+nano apps/vera_drive/vera_drive/service_account.json
+# Paste the JSON and save. This file is gitignored — never commit it.
 ```
 
-The JSON needs these fields (ask user for the private_key):
+The JSON structure (ask user for `private_key`):
 ```json
 {
   "type": "service_account",
   "project_id": "vera-drive-498117",
   "private_key_id": "45b378f1c66c523bb0077dc362f3db1b247086d3",
-  "private_key": "<ASK USER>",
+  "private_key": "<ASK USER — from secure vault>",
   "client_email": "vera-drive-bot@vera-drive-498117.iam.gserviceaccount.com",
   "client_id": "104066696251131720998",
   "auth_uri": "https://accounts.google.com/o/oauth2/auth",
@@ -163,38 +202,59 @@ The JSON needs these fields (ask user for the private_key):
 }
 ```
 
-#### React Frontend (.env.local — local dev only)
-```bash
-# File: hr-frontend/.env.local  (gitignored)
-VITE_API_BASE=
-VITE_USE_MOCK=false
-```
-
-### 5. Build the React Frontend
+### 7. Build the React Frontend
 
 ```bash
 cd ~/frappe-bench/apps/Vera_ERP/hr-frontend
-npm install
-
-# Development (hot reload, proxies /api/ to ERPNext)
-npm run dev
-
-# Production build
 npm run build
+# Output: hr-frontend/dist/
 ```
 
-### 6. Nginx + SSL (Production)
+### 8. Nginx + SSL (Production)
 
 ```bash
+# Let bench configure nginx for ERPNext
 sudo bench setup nginx
 sudo bench setup supervisor
 sudo supervisorctl reread && sudo supervisorctl update
 
+# Configure nginx to also serve the React build
+# Add this block inside the ERPNext server block in /etc/nginx/conf.d/frappe-bench.conf
+# (or create a separate file)
+cat << 'EOF' | sudo tee /etc/nginx/conf.d/vera-react.conf
+server {
+    listen 80;
+    server_name <SITE_NAME>;
+
+    root /home/frappe/frappe-bench/apps/Vera_ERP/hr-frontend/dist;
+    index index.html;
+
+    # React SPA — all routes fall back to index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy /api/ and /assets/ to ERPNext
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /assets/ {
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+EOF
+
+sudo nginx -t && sudo systemctl reload nginx
+
+# Free SSL via Let's Encrypt
 sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d <SITE_NAME>
 ```
 
-### 7. Production Mode
+### 9. Production Mode
 
 ```bash
 bench --site <SITE_NAME> set-config developer_mode 0
@@ -208,13 +268,13 @@ sudo bench setup production frappe
 
 All passwords: `Vera@2026`
 
-| Name | Login Email | Role |
-|------|-------------|------|
-| Owais Ahmed Khan | `owais@veraenterprises.in` (logs in as `Administrator`) | Admin — full access |
-| Maaz | `maazdgr8.mma@gmail.com` | Project Manager |
-| Manjunath M N | `manju.veraaccnts@outlook.com` | Accounts Manager |
-| Lookman | `lookman.vera@outlook.com` | Accounts Executive |
-| Bhagya Shree | `bhagyashree.veraenterprises@outlook.com` | Logistics + HR |
+| Name | Login Email | ERPNext User | Role |
+|------|-------------|-------------|------|
+| Owais Ahmed Khan | `owais@veraenterprises.in` | `Administrator` | Admin — full access |
+| Maaz | `maazdgr8.mma@gmail.com` | same | Project Manager |
+| Manjunath M N | `manju.veraaccnts@outlook.com` | same | Accounts Manager |
+| Lookman | `lookman.vera@outlook.com` | same | Accounts Executive |
+| Bhagya Shree | `bhagyashree.veraenterprises@outlook.com` | same | Logistics + HR |
 
 ---
 
@@ -242,21 +302,21 @@ All passwords: `Vera@2026`
 ## Security Rules
 
 - **Never** commit `service_account.json` — Google Drive private key
-- **Never** commit `.env*` files — frontend secrets
-- **Never** commit `site_config.json` or `common_site_config.json` — ERPNext DB credentials
+- **Never** commit `.env*` files
+- **Never** commit `site_config.json` or `common_site_config.json`
 - **Never** commit `brain.db` — AI session memory
-- All server credentials go in `bench set-config` (stored in `sites/*/site_config.json` which is gitignored)
-- Always verify `.gitignore` covers a file before `git add`
+- All server secrets go in `bench set-config` (stored in `sites/*/site_config.json` — gitignored)
+- Always check `.gitignore` before `git add`
 
 ---
 
-## Auto-Update (Server Cron)
+## Auto-Update Cron (Production)
 
 ```bash
 crontab -e
-# Add:
+# Pull and restart at 2 AM daily
 0 2 * * * cd ~/frappe-bench/apps/Vera_ERP && git pull origin main \
-  && bench --site <SITE_NAME> migrate \
+  && cd ~/frappe-bench && bench --site <SITE_NAME> migrate \
   && bench restart
 ```
 
@@ -264,7 +324,7 @@ crontab -e
 
 ## Local Development (WSL2)
 
-Bench runs on port **8001** — Windows Hyper-V silently reserves 8000 on WSL2.
+Bench runs on port **8001** on the dev machine — Windows Hyper-V reserves port 8000 on WSL2 (this is already set in `Procfile`). On a real Linux server, port 8000 is used instead.
 
 ```bash
 # Terminal 1
@@ -274,4 +334,12 @@ cd ~/frappe-bench && bench start
 cd ~/hr-frontend && npm run dev
 # Frontend: http://localhost:5173
 # API proxied to: http://localhost:8001
+```
+
+To reset the port for a real server (not WSL2):
+```bash
+# In ~/frappe-bench/Procfile, change:
+#   web: bench serve --port 8001
+# to:
+#   web: bench serve --port 8000
 ```

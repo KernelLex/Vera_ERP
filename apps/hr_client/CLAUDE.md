@@ -938,6 +938,22 @@ All passwords: `Vera@2026`. Owais logs in as `Administrator`.
 
 **Employee records:** All 5 team members created as ERPNext Employee docs (HR-EMP-00001 through HR-EMP-00005), linked to their User accounts, status Active, date_of_joining 2024-01-01.
 
+## Repository
+Single monorepo: https://github.com/KernelLex/Vera_ERP
+Branch: main
+Structure:
+- `apps/hr_client/` — Frappe backend (this app)
+- `apps/vera_drive/` — Google Drive Frappe app
+- `hr-frontend/` — React frontend SPA
+- `README.md` — Single source of truth for full server setup (requirements, ERPNext install, credentials, nginx, SSL, production mode)
+- `setup.sh` — One-command installer (copies apps → bench, installs, migrates, npm install)
+
+Auto-deploy: server cron job pulls main at 2 AM daily and runs migrate + bench restart.
+
+**Key rule:** When adding new credentials or setup steps, update `README.md` before closing the session.
+
+---
+
 ## Decisions made
 - Using shadcn/ui for all form components
 - Odoo-style left sidebar (dark gray-900), collapsible, "Vera ERP" branding
@@ -950,6 +966,13 @@ All passwords: `Vera@2026`. Owais logs in as `Administrator`.
 - Self-edit vs admin-edit split: employees control personal info + bank + skills; only admins can change designation, department, joining date, work email, reporting manager, Aadhaar, PAN
 - Aadhaar/PAN numbers masked ("Stored securely") for non-admin users in the profile page
 - Company: Vera Enterprises (ERPNext name), abbreviation V, departments suffixed ` - V`
+
+## Decisions made (additions 2026-06-02 — monorepo)
+- All code consolidated into single monorepo at `github.com/KernelLex/Vera_ERP` — no more 3 separate repos (hr_client, vera_drive, hr-frontend were separate before 2026-06-02)
+- `README.md` in monorepo root is the single source of truth for server setup — always keep it updated when setup steps change
+- Holidays feature uses dual storage: hardcoded in `get_holidays` API endpoint (fast, reliable for React) AND stored in ERPNext Holiday List DocType "Vera Enterprises 2026" (used by HRMS core for leave calculations)
+- `/holidays` route is a standalone page accessible to all employees (not admin-only). `get_holidays` and `get_leave_policy` endpoints intentionally have no admin check — it's public calendar data.
+- Sidebar top profile pill removed (2026-06-02) — only bottom profile section (above Sign Out) remains. No duplicate profile display.
 
 ## Decisions made (additions 2026-06-01)
 - `vera_drive` is a separate Frappe app, not part of `hr_client` — keeps Drive integration isolated and independently deployable
@@ -992,6 +1015,8 @@ All passwords: `Vera@2026`. Owais logs in as `Administrator`.
 - DO NOT run `bench migrate` without first starting bench (`bench start`) — migrate requires Redis cache + queue to be running or it will abort with "Service redis_cache is not running"
 - DO NOT create users via bench console while bench is stopped — user creation triggers background jobs that need Redis queue (port 11000); the creation may succeed but the console will show scary ConnectionError warnings. Always verify with `frappe.db.exists("User", email)` after
 - DO NOT put admin-only routes behind only a nav guard — also `<Navigate to="/" replace />` inside the page component when `user.name` is not in the admin set, so direct URL access is also blocked
+- DO NOT commit credentials, `.env` files, `service_account.json`, or `brain.db` to GitHub — always verify `.gitignore` covers these before any `git add`. The `.gitignore` in the monorepo root is the canonical list.
+- DO NOT update `README.md` in `~/Vera_ERP_combined/apps/hr_client/` (static copy) — always edit the live working copy at `~/frappe-bench/apps/hr_client/CLAUDE.md`, then sync to monorepo.
 - DO NOT use `@radix-ui/react-switch` — it is not installed; use `src/components/ui/switch.tsx` (the custom CSS toggle) instead
 - DO NOT use CamelCase module keys (e.g. `EmployeeLifecycle`) in v2 permissions API — all module keys are snake_case: `employee_lifecycle`, `logistics`, etc.
 - DO NOT expect `frappe.db.exists("Role", role)` to find "Projects Manager" — that role does not exist in ERPNext v15. Use "Projects User" instead

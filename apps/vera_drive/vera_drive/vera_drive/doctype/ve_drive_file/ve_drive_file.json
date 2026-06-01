@@ -1,0 +1,166 @@
+{
+ "actions": [],
+ "creation": "2026-06-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "file_name",
+  "original_name",
+  "doc_type",
+  "category",
+  "party_name",
+  "file_date",
+  "drive_file_id",
+  "drive_view_link",
+  "drive_folder_path",
+  "file_extension",
+  "status",
+  "admin_notes",
+  "synced_on",
+  "uploaded_by_name",
+  "uploaded_by_email",
+  "last_modified_by_name",
+  "last_modified_by_email",
+  "upload_detected_method"
+ ],
+ "fields": [
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "File Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "original_name",
+   "fieldtype": "Data",
+   "label": "Original Name"
+  },
+  {
+   "fieldname": "doc_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Doc Type",
+   "options": "Quotation\nSales Order\nSales Invoice\nDelivery Note\nReceipt\nCredit Note\nPurchase Order\nPurchase Invoice\nGRN\nDelivery Certificate\nPayment\nDebit Note\nTrial Balance\nProfit & Loss\nBalance Sheet\nBank Reconciliation\nLedger\nDaybook\nSalary Slip\nAttendance\nPayroll Summary\nTransport Doc\nPacking List\nStock Report\nStock Journal\nContra\nJournal\nOther"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Category",
+   "options": "Sales\nPurchase\nAccounts\nHR\nLogistics\nOther"
+  },
+  {
+   "fieldname": "party_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Party Name"
+  },
+  {
+   "fieldname": "file_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "File Date"
+  },
+  {
+   "fieldname": "drive_file_id",
+   "fieldtype": "Data",
+   "label": "Drive File ID"
+  },
+  {
+   "fieldname": "drive_view_link",
+   "fieldtype": "Data",
+   "label": "Drive View Link"
+  },
+  {
+   "fieldname": "drive_folder_path",
+   "fieldtype": "Data",
+   "label": "Drive Folder Path"
+  },
+  {
+   "fieldname": "file_extension",
+   "fieldtype": "Data",
+   "label": "File Extension"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "default": "New",
+   "options": "New\nReviewed\nFlagged"
+  },
+  {
+   "fieldname": "admin_notes",
+   "fieldtype": "Text Editor",
+   "label": "Admin Notes"
+  },
+  {
+   "fieldname": "synced_on",
+   "fieldtype": "Datetime",
+   "label": "Synced On"
+  },
+  {
+   "fieldname": "uploaded_by_name",
+   "fieldtype": "Data",
+   "label": "Uploaded By"
+  },
+  {
+   "fieldname": "uploaded_by_email",
+   "fieldtype": "Data",
+   "label": "Uploader Email"
+  },
+  {
+   "fieldname": "last_modified_by_name",
+   "fieldtype": "Data",
+   "label": "Last Modified By"
+  },
+  {
+   "fieldname": "last_modified_by_email",
+   "fieldtype": "Data",
+   "label": "Last Modifier Email"
+  },
+  {
+   "fieldname": "upload_detected_method",
+   "fieldtype": "Data",
+   "label": "Detection Method"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vera Drive",
+ "name": "VE Drive File",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

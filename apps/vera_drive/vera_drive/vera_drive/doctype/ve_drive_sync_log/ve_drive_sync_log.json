@@ -1,0 +1,68 @@
+{
+ "actions": [],
+ "creation": "2026-06-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "sync_time",
+  "files_found",
+  "files_new",
+  "sync_status",
+  "error_log"
+ ],
+ "fields": [
+  {
+   "fieldname": "sync_time",
+   "fieldtype": "Datetime",
+   "label": "Sync Time"
+  },
+  {
+   "fieldname": "files_found",
+   "fieldtype": "Int",
+   "label": "Files Found"
+  },
+  {
+   "fieldname": "files_new",
+   "fieldtype": "Int",
+   "label": "Files New"
+  },
+  {
+   "fieldname": "sync_status",
+   "fieldtype": "Select",
+   "label": "Sync Status",
+   "options": "Success\nFailed"
+  },
+  {
+   "fieldname": "error_log",
+   "fieldtype": "Text",
+   "label": "Error Log"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2026-06-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Vera Drive",
+ "name": "VE Drive Sync Log",
+ "naming_rule": "Random",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "read": 1,
+   "role": "Administrator",
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "System Manager",
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 0
+}

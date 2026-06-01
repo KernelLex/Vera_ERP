@@ -1,0 +1,17 @@
+{
+ "creation": "2026-06-01 00:00:00.000000",
+ "doctype": "Page",
+ "module": "Vera Drive",
+ "name": "vera-dashboard",
+ "page_name": "vera-dashboard",
+ "roles": [
+  {
+   "role": "Administrator"
+  },
+  {
+   "role": "System Manager"
+  }
+ ],
+ "standard": "Yes",
+ "title": "VE Drive Dashboard"
+}
